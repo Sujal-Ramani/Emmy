@@ -1,0 +1,199 @@
+GPT 5.4mini and Google API
+
+# -*- coding: utf-8 -*-
+
+import openai
+import pandas as pd
+import time
+import requests
+import matplotlib.pyplot as plt
+import os
+
+OPENAI_MODEL = 'gpt-5.4-mini'
+
+def get_clean_key():
+    return "PASTE_YOUR_API_KEY_HERE"
+
+print("="*60)
+print("Initializing translation services")
+print("="*60)
+
+def google_translate(text, dest='es'):
+    try:
+        url = "https://translate.googleapis.com/translate_a/single"
+        params = {
+            "client": "gtx",
+            "sl": "en",
+            "tl": dest,
+            "dt": "t",
+            "q": text
+        }
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            translated = ''
+            for sentence in result[0]:
+                if sentence[0]:
+                    translated += sentence[0]
+            return translated.strip()
+        return f"Error: HTTP {response.status_code}"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+class TranslationComparer:
+    def __init__(self, openai_model='gpt-5.4-mini'):
+        self.openai_model = openai_model
+
+        openai_key = get_clean_key()
+        self.client = openai.OpenAI(api_key=openai_key)
+
+        try:
+            self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[{"role": "user", "content": "test"}],
+                max_completion_tokens=5,
+                timeout=10
+            )
+            print("OpenAI connection successful")
+        except Exception as e:
+            print(f"Connection failed: {e}")
+            raise
+
+    def translate_google(self, text: str, dest: str = 'es') -> str:
+        return google_translate(text, dest=dest)
+
+    def translate_openai(self, text: str, target_language: str = 'Spanish') -> str:
+        try:
+            response = self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[
+                    {"role": "system", "content": f"Translate the following English text to {target_language}. Return only the translation."},
+                    {"role": "user", "content": text}
+                ],
+                temperature=0.3,
+                max_completion_tokens=1000
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"OpenAI Error: {str(e)}"
+
+comparer = TranslationComparer(openai_model=OPENAI_MODEL)
+
+test_cases = {
+    "3-Word Basic": [
+        "How are you?",
+        "What's happening?",
+        "Good morning",
+        "See you later",
+        "Take it easy",
+    ],
+    "3-Word Southern US": [
+        "Bless your heart",
+        "Fixin' to go",
+        "Over yonder",
+        "Y'all come now",
+        "Madder than hen",
+    ],
+    "3-Word British": [
+        "Take the lift",
+        "Boot of car",
+        "Ring you later",
+        "On pavement",
+        "In the bin",
+    ],
+    "3-Word Idioms": [
+        "Break a leg",
+        "Piece of cake",
+        "Spill beans",
+        "Hit nail",
+        "Cost arm",
+    ],
+    "4-Word Basic": [
+        "Where is the bathroom?",
+        "How much does this cost?",
+        "I would like coffee",
+        "What time is it?",
+        "Can you help me?",
+    ],
+    "5-Word Basic": [
+        "Could you please speak slower?",
+        "I don't understand what you mean",
+        "Is there a restaurant nearby?",
+        "That sounds like a great idea",
+        "Please write it down for me",
+    ]
+}
+
+def run_diclets_test(comparer, test_cases):
+    all_results = []
+
+    for category, texts in test_cases.items():
+        for text in texts:
+
+            g_start = time.time()
+            google_result = comparer.translate_google(text)
+            g_time = time.time() - g_start
+
+            time.sleep(0.5)
+
+            o_start = time.time()
+            openai_result = comparer.translate_openai(text)
+            o_time = time.time() - o_start
+
+            winner = "Google" if g_time < o_time else "OpenAI"
+
+            result = {
+                'category': category,
+                'word_count': len(text.split()),
+                'original_text': text,
+                'google_translation': google_result,
+                'google_time': round(g_time, 3),
+                'openai_translation': openai_result,
+                'openai_time': round(o_time, 3),
+                'winner': winner
+            }
+            all_results.append(result)
+
+            time.sleep(0.5)
+
+    return pd.DataFrame(all_results)
+
+results_df = run_diclets_test(comparer, test_cases)
+
+csv_filename = 'diclets_results.csv'
+results_df.to_csv(csv_filename, index=False)
+
+total_tests = len(results_df)
+google_wins = sum(results_df['winner'] == 'Google')
+openai_wins = sum(results_df['winner'] == 'OpenAI')
+
+fig = plt.figure(figsize=(12, 6))
+
+ax = plt.subplot(1, 1, 1)
+ax.pie([google_wins, openai_wins],
+       labels=['Google', 'OpenAI'],
+       autopct='%1.1f%%')
+ax.set_title('Winner Distribution')
+
+plt.tight_layout()
+png_filename = 'results.png'
+plt.savefig(png_filename)
+plt.show()
+
+report = f"""# Translation Comparison Report
+
+Date: {pd.Timestamp.now().strftime('%Y-%m-%d')}
+Total Tests: {total_tests}
+
+Google Wins: {google_wins}
+OpenAI Wins: {openai_wins}
+"""
+
+report_filename = 'report.md'
+with open(report_filename, 'w') as f:
+    f.write(report)
+
+print("Files created:")
+print(report_filename)
+print(png_filename)
+print(csv_filename)

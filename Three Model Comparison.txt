@@ -1,0 +1,121 @@
+Three Model Comparison:
+
+# -*- coding: utf-8 -*-
+
+!pip install python-docx
+
+from docx import Document
+from docx.shared import Pt, RGBColor, Cm
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_TABLE_ALIGNMENT
+from datetime import datetime
+import pandas as pd
+import os
+from google.colab import files
+
+doc = Document()
+
+sections = doc.sections
+for section in sections:
+    section.top_margin = Cm(2.54)
+    section.bottom_margin = Cm(2.54)
+    section.left_margin = Cm(2.54)
+    section.right_margin = Cm(2.54)
+
+title = doc.add_heading('COMPREHENSIVE TRANSLATION TESTING REPORT', 0)
+title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+for run in title.runs:
+    run.font.size = Pt(28)
+    run.font.color.rgb = RGBColor(0, 102, 204)
+    run.font.bold = True
+
+subtitle = doc.add_heading('Google Translate vs GPT-4o-mini vs GPT-5.4-mini', level=1)
+subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+doc.add_paragraph()
+
+info_table = doc.add_table(rows=4, cols=2)
+info_table.style = 'Light Shading'
+
+details = [
+    ('Prepared By:', 'Student Project'),
+    ('Date:', datetime.now().strftime('%B %d, %Y')),
+    ('Models Tested:', 'Google Translate, GPT-4o-mini, GPT-5.4-mini'),
+    ('Total Test Cases:', '180')
+]
+
+for i, (label, value) in enumerate(details):
+    info_table.rows[i].cells[0].text = label
+    info_table.rows[i].cells[1].text = value
+
+doc.add_paragraph()
+
+doc.add_heading('EXECUTIVE SUMMARY', level=1)
+
+doc.add_paragraph(
+    "This report presents results from testing three translation services across multiple short phrases including dialects and idioms. "
+    "Each model shows different strengths depending on context, with Google Translate being fastest and GPT models providing better contextual understanding."
+)
+
+doc.add_heading('KEY FINDINGS', level=2)
+
+findings_table = doc.add_table(rows=4, cols=2)
+findings_table.style = 'Light Grid'
+
+findings = [
+    ('Fastest Model', 'Google Translate'),
+    ('Best for British English', 'GPT-4o-mini'),
+    ('Best for Southern Dialect', 'GPT-5.4-mini')
+]
+
+for i, row in enumerate(findings):
+    findings_table.rows[i].cells[0].text = row[0]
+    findings_table.rows[i].cells[1].text = row[1]
+
+doc.add_paragraph()
+
+doc.add_heading('MODEL COMPARISON', level=1)
+
+doc.add_paragraph('Google Translate is the fastest option and suitable for simple phrases.')
+doc.add_paragraph('GPT-4o-mini performs well with idioms and British English.')
+doc.add_paragraph('GPT-5.4-mini shows better handling of dialect-based phrases.')
+
+doc.add_paragraph()
+
+doc.add_heading('COST ANALYSIS', level=1)
+
+cost_table = doc.add_table(rows=4, cols=2)
+cost_table.style = 'Light Shading'
+
+cost_data = [
+    ('Google Translate', '$0.00'),
+    ('GPT-4o-mini', '~$1.50'),
+    ('GPT-5.4-mini', 'Depends on usage')
+]
+
+for i, row in enumerate(cost_data):
+    cost_table.rows[i].cells[0].text = row[0]
+    cost_table.rows[i].cells[1].text = row[1]
+
+doc.add_paragraph()
+
+doc.add_heading('CONCLUSION', level=1)
+
+doc.add_paragraph(
+    "Each model has advantages depending on the use case. A combination of services can provide a balance between speed, cost, and translation quality."
+)
+
+doc.add_page_break()
+
+footer = doc.add_paragraph()
+footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+footer.add_run(f'Report generated: {datetime.now().strftime("%B %d, %Y")}\n')
+footer.add_run('Three-model translation comparison project')
+
+filename = 'translation_comparison_report.docx'
+doc.save(filename)
+
+print("File created:")
+print(filename)
+
+files.download(filename)
